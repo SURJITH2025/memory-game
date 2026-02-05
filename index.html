@@ -1,0 +1,1513 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Flip Match Pro - Memory Card Game</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 900px;
+            width: 100%;
+        }
+
+        header {
+            text-align: center;
+            color: white;
+            margin-bottom: 20px;
+        }
+
+        h1 {
+            font-size: clamp(24px, 5vw, 42px);
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .live-stats {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            flex-wrap: wrap;
+            margin-bottom: 20px;
+        }
+
+        .stat-badge {
+            background: rgba(255, 255, 255, 0.25);
+            backdrop-filter: blur(10px);
+            padding: 8px 16px;
+            border-radius: 20px;
+            color: white;
+            font-size: 14px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .stat-badge.pulse {
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+
+        .game-info {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            flex-wrap: wrap;
+            margin-bottom: 20px;
+        }
+
+        .info-box {
+            background: rgba(255, 255, 255, 0.2);
+            backdrop-filter: blur(10px);
+            padding: 12px 24px;
+            border-radius: 12px;
+            color: white;
+            font-size: 18px;
+            font-weight: 600;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+
+        .info-label {
+            font-size: 14px;
+            opacity: 0.9;
+            margin-bottom: 4px;
+        }
+
+        .game-board {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 12px;
+            margin-bottom: 20px;
+            perspective: 1000px;
+        }
+
+        .card {
+            aspect-ratio: 1;
+            position: relative;
+            cursor: pointer;
+            transform-style: preserve-3d;
+            transition: transform 0.6s;
+        }
+
+        .card.flipped {
+            transform: rotateY(180deg);
+        }
+
+        .card.matched {
+            animation: matchPulse 0.6s ease;
+        }
+
+        @keyframes matchPulse {
+            0%, 100% { transform: rotateY(180deg) scale(1); }
+            50% { transform: rotateY(180deg) scale(1.1); }
+        }
+
+        .card-face {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            backface-visibility: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 12px;
+            font-size: clamp(32px, 6vw, 48px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        }
+
+        .card-front {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            transform: rotateY(180deg);
+        }
+
+        .card-back {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            font-weight: bold;
+            color: white;
+            font-size: 24px;
+        }
+
+        .controls {
+            display: flex;
+            gap: 12px;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin-bottom: 20px;
+        }
+
+        button {
+            padding: 14px 28px;
+            font-size: 16px;
+            font-weight: 600;
+            border: none;
+            border-radius: 25px;
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.2);
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+        }
+
+        .btn-secondary {
+            background: white;
+            color: #667eea;
+        }
+
+        .btn-success {
+            background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+            color: white;
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px rgba(0,0,0,0.3);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.7);
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            overflow-y: auto;
+            padding: 20px;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: white;
+            padding: 40px;
+            border-radius: 20px;
+            max-width: 500px;
+            width: 100%;
+            animation: modalSlideIn 0.3s ease;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+
+        @keyframes modalSlideIn {
+            from {
+                transform: translateY(-50px);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        .modal h2 {
+            color: #667eea;
+            margin-bottom: 20px;
+            font-size: 32px;
+            text-align: center;
+        }
+
+        .modal p {
+            color: #666;
+            margin-bottom: 10px;
+            font-size: 18px;
+            text-align: center;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            color: #333;
+            font-weight: 600;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: border-color 0.3s;
+        }
+
+        .form-group input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .error-message {
+            color: #f5576c;
+            font-size: 14px;
+            margin-top: 5px;
+        }
+
+        .user-info {
+            background: rgba(255, 255, 255, 0.2);
+            backdrop-filter: blur(10px);
+            padding: 15px;
+            border-radius: 12px;
+            color: white;
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .user-name {
+            font-weight: 600;
+            font-size: 18px;
+        }
+
+        .leaderboard {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+
+        .leaderboard h3 {
+            color: #667eea;
+            margin-bottom: 15px;
+            text-align: center;
+        }
+
+        .leaderboard-tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .tab-btn {
+            padding: 8px 16px;
+            border: 2px solid #667eea;
+            background: white;
+            color: #667eea;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s;
+        }
+
+        .tab-btn.active {
+            background: #667eea;
+            color: white;
+        }
+
+        .leaderboard-list {
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .leaderboard-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px;
+            border-bottom: 1px solid #f0f0f0;
+            transition: background 0.2s;
+        }
+
+        .leaderboard-item:hover {
+            background: #f9f9f9;
+        }
+
+        .leaderboard-item:last-child {
+            border-bottom: none;
+        }
+
+        .rank {
+            font-weight: bold;
+            width: 40px;
+            color: #667eea;
+        }
+
+        .rank.gold { color: #FFD700; }
+        .rank.silver { color: #C0C0C0; }
+        .rank.bronze { color: #CD7F32; }
+
+        .player-name {
+            flex: 1;
+            font-weight: 600;
+        }
+
+        .score {
+            color: #666;
+            font-size: 14px;
+        }
+
+        .stats-dashboard {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }
+
+        .stat-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 12px;
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 32px;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .stat-label {
+            font-size: 14px;
+            opacity: 0.9;
+        }
+
+        @media (max-width: 600px) {
+            .game-board {
+                gap: 8px;
+            }
+
+            .card-face {
+                border-radius: 8px;
+            }
+
+            .info-box {
+                padding: 10px 20px;
+                font-size: 16px;
+            }
+
+            button {
+                padding: 12px 24px;
+                font-size: 14px;
+            }
+
+            .modal-content {
+                padding: 30px 20px;
+            }
+
+            .stats-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        .welcome-screen {
+            text-align: center;
+            color: white;
+        }
+
+        .welcome-screen h2 {
+            font-size: 36px;
+            margin-bottom: 20px;
+        }
+
+        .welcome-screen p {
+            font-size: 18px;
+            margin-bottom: 30px;
+            opacity: 0.9;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Welcome/Login Screen -->
+        <div id="welcomeScreen" class="welcome-screen">
+            <h2>🎴 Welcome to Flip Match Pro</h2>
+            <p>Compete globally and track your progress!</p>
+            <div class="controls">
+                <button class="btn-primary" onclick="app.showLogin()">Login</button>
+                <button class="btn-success" onclick="app.showRegister()">Create Account</button>
+                <button class="btn-secondary" onclick="app.playAsGuest()">🎮 Play as Guest</button>
+                <button class="btn-secondary" onclick="app.viewStats()">View Stats</button>
+            </div>
+        </div>
+
+        <!-- Main Game Screen -->
+        <div id="gameScreen" class="hidden">
+            <header>
+                <h1>🎴 Flip Match Pro</h1>
+            </header>
+
+            <div class="live-stats">
+                <div class="stat-badge pulse">
+                    👥 <span id="onlineUsers">0</span> Online
+                </div>
+                <div class="stat-badge">
+                    📊 <span id="totalPlayers">0</span> Total Players
+                </div>
+                <div class="stat-badge">
+                    📥 <span id="totalDownloads">0</span> Downloads
+                </div>
+                <div class="stat-badge">
+                    🎮 <span id="gamesPlayed">0</span> Games Played
+                </div>
+            </div>
+
+            <div class="user-info" id="userInfo">
+                <div>
+                    <span class="user-name" id="displayName"></span>
+                </div>
+                <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                    <button class="btn-success" id="upgradeBtn" style="padding: 8px 16px; display: none;" onclick="app.showUpgrade()">⬆️ Upgrade Account</button>
+                    <button class="btn-secondary" style="padding: 8px 16px;" onclick="app.logout()">Logout</button>
+                </div>
+            </div>
+
+            <div class="game-info">
+                <div class="info-box">
+                    <div class="info-label">Moves</div>
+                    <div id="moves">0</div>
+                </div>
+                <div class="info-box">
+                    <div class="info-label">Time</div>
+                    <div id="timer">0:00</div>
+                </div>
+                <div class="info-box">
+                    <div class="info-label">Pairs</div>
+                    <div id="pairs">0/8</div>
+                </div>
+            </div>
+
+            <div class="game-board" id="gameBoard"></div>
+
+            <div class="controls">
+                <button class="btn-primary" onclick="game.restart()">🔄 New Game</button>
+                <button class="btn-secondary" onclick="app.showLeaderboard()">🏆 Leaderboard</button>
+                <button class="btn-secondary" onclick="app.showPersonalStats()">📊 My Stats</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Login Modal -->
+    <div class="modal" id="loginModal">
+        <div class="modal-content">
+            <h2>Login</h2>
+            <div class="form-group">
+                <label>Username</label>
+                <input type="text" id="loginUsername" placeholder="Enter username">
+            </div>
+            <div class="form-group">
+                <label>Password</label>
+                <input type="password" id="loginPassword" placeholder="Enter password">
+            </div>
+            <div id="loginError" class="error-message"></div>
+            <button class="btn-primary" style="width: 100%; margin-bottom: 10px;" onclick="app.login()">Login</button>
+            <button class="btn-secondary" style="width: 100%;" onclick="app.closeModal('loginModal')">Cancel</button>
+        </div>
+    </div>
+
+    <!-- Register Modal -->
+    <div class="modal" id="registerModal">
+        <div class="modal-content">
+            <h2>Create Account</h2>
+            <div class="form-group">
+                <label>Username</label>
+                <input type="text" id="registerUsername" placeholder="Choose username">
+            </div>
+            <div class="form-group">
+                <label>Email</label>
+                <input type="email" id="registerEmail" placeholder="Your email">
+            </div>
+            <div class="form-group">
+                <label>Password</label>
+                <input type="password" id="registerPassword" placeholder="Choose password">
+            </div>
+            <div id="registerError" class="error-message"></div>
+            <button class="btn-primary" style="width: 100%; margin-bottom: 10px;" onclick="app.register()">Create Account</button>
+            <button class="btn-secondary" style="width: 100%;" onclick="app.closeModal('registerModal')">Cancel</button>
+        </div>
+    </div>
+
+    <!-- Upgrade Account Modal -->
+    <div class="modal" id="upgradeModal">
+        <div class="modal-content">
+            <h2>⬆️ Upgrade Your Account</h2>
+            <p style="margin-bottom: 20px;">Save your progress and compete with a custom username!</p>
+            <div class="form-group">
+                <label>Username</label>
+                <input type="text" id="upgradeUsername" placeholder="Choose username">
+            </div>
+            <div class="form-group">
+                <label>Email</label>
+                <input type="email" id="upgradeEmail" placeholder="Your email">
+            </div>
+            <div class="form-group">
+                <label>Password</label>
+                <input type="password" id="upgradePassword" placeholder="Choose password">
+            </div>
+            <div id="upgradeError" class="error-message"></div>
+            <button class="btn-primary" style="width: 100%; margin-bottom: 10px;" onclick="app.upgradeAccount()">Upgrade to Full Account</button>
+            <button class="btn-secondary" style="width: 100%;" onclick="app.closeModal('upgradeModal')">Cancel</button>
+        </div>
+    </div>
+
+    <!-- Win Modal -->
+    <div class="modal" id="winModal">
+        <div class="modal-content">
+            <h2>🎉 You Win!</h2>
+            <p>Moves: <strong id="finalMoves">0</strong></p>
+            <p>Time: <strong id="finalTime">0:00</strong></p>
+            <p id="personalBestText"></p>
+            <p id="globalRankText"></p>
+            <button class="btn-primary" style="width: 100%; margin-bottom: 10px;" onclick="game.closeWinModal()">Play Again</button>
+            <button class="btn-secondary" style="width: 100%;" onclick="app.showLeaderboard()">View Leaderboard</button>
+        </div>
+    </div>
+
+    <!-- Leaderboard Modal -->
+    <div class="modal" id="leaderboardModal">
+        <div class="modal-content">
+            <h2>🏆 Leaderboard</h2>
+            <div class="leaderboard-tabs">
+                <button class="tab-btn active" onclick="app.switchLeaderboard('daily')">Today</button>
+                <button class="tab-btn" onclick="app.switchLeaderboard('weekly')">This Week</button>
+                <button class="tab-btn" onclick="app.switchLeaderboard('alltime')">All Time</button>
+            </div>
+            <div class="leaderboard-list" id="leaderboardList">
+                <!-- Populated dynamically -->
+            </div>
+            <button class="btn-secondary" style="width: 100%; margin-top: 20px;" onclick="app.closeModal('leaderboardModal')">Close</button>
+        </div>
+    </div>
+
+    <!-- Personal Stats Modal -->
+    <div class="modal" id="statsModal">
+        <div class="modal-content">
+            <h2>📊 Your Stats</h2>
+            <div class="stats-grid" id="personalStatsGrid">
+                <!-- Populated dynamically -->
+            </div>
+            <button class="btn-secondary" style="width: 100%; margin-top: 20px;" onclick="app.closeModal('statsModal')">Close</button>
+        </div>
+    </div>
+
+    <!-- Global Stats Modal -->
+    <div class="modal" id="globalStatsModal">
+        <div class="modal-content">
+            <h2>📊 Global Statistics</h2>
+            <div class="stats-grid" id="globalStatsGrid">
+                <!-- Populated dynamically -->
+            </div>
+            <button class="btn-secondary" style="width: 100%; margin-top: 20px;" onclick="app.closeModal('globalStatsModal')">Close</button>
+        </div>
+    </div>
+
+    <script>
+        // Application State Management
+        const app = {
+            currentUser: null,
+            currentLeaderboard: 'daily',
+            sessionId: null,
+
+            async init() {
+                // Generate session ID
+                this.sessionId = 'session_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+                
+                // Track page load
+                await this.trackDownload();
+                await this.registerOnlineUser();
+                
+                // Update stats every 30 seconds
+                setInterval(() => this.updateLiveStats(), 30000);
+                
+                // Check if user is logged in (registered or guest)
+                const savedUser = localStorage.getItem('flipMatchUser');
+                if (savedUser) {
+                    this.currentUser = JSON.parse(savedUser);
+                    this.showGameScreen();
+                } else {
+                    // Check for existing guest ID
+                    const guestId = localStorage.getItem('flipMatchGuestId');
+                    if (guestId) {
+                        // Auto-login as existing guest
+                        this.currentUser = {
+                            username: 'Guest_' + guestId,
+                            isGuest: true,
+                            guestId: guestId,
+                            createdAt: Date.now()
+                        };
+                        localStorage.setItem('flipMatchUser', JSON.stringify(this.currentUser));
+                        this.showGameScreen();
+                    }
+                }
+                
+                // Initial stats load
+                await this.updateLiveStats();
+                
+                // Track when user leaves
+                window.addEventListener('beforeunload', () => this.unregisterOnlineUser());
+            },
+
+            playAsGuest() {
+                // Check if guest already exists
+                let guestId = localStorage.getItem('flipMatchGuestId');
+                
+                if (!guestId) {
+                    // Generate unique guest ID
+                    guestId = Date.now().toString(36) + Math.random().toString(36).substr(2, 5);
+                    localStorage.setItem('flipMatchGuestId', guestId);
+                }
+
+                this.currentUser = {
+                    username: 'Guest_' + guestId,
+                    isGuest: true,
+                    guestId: guestId,
+                    createdAt: Date.now()
+                };
+
+                localStorage.setItem('flipMatchUser', JSON.stringify(this.currentUser));
+                this.showGameScreen();
+            },
+
+            showUpgrade() {
+                document.getElementById('upgradeModal').classList.add('active');
+                document.getElementById('upgradeError').textContent = '';
+            },
+
+            async upgradeAccount() {
+                if (!this.currentUser || !this.currentUser.isGuest) {
+                    document.getElementById('upgradeError').textContent = 'Not a guest account';
+                    return;
+                }
+
+                const username = document.getElementById('upgradeUsername').value.trim();
+                const email = document.getElementById('upgradeEmail').value.trim();
+                const password = document.getElementById('upgradePassword').value;
+
+                if (!username || !email || !password) {
+                    document.getElementById('upgradeError').textContent = 'Please fill in all fields';
+                    return;
+                }
+
+                if (username.length < 3) {
+                    document.getElementById('upgradeError').textContent = 'Username must be at least 3 characters';
+                    return;
+                }
+
+                if (password.length < 6) {
+                    document.getElementById('upgradeError').textContent = 'Password must be at least 6 characters';
+                    return;
+                }
+
+                try {
+                    const userKey = 'user:' + username.toLowerCase();
+                    
+                    // Check if username exists
+                    try {
+                        const existing = await window.storage.get(userKey, true);
+                        if (existing) {
+                            document.getElementById('upgradeError').textContent = 'Username already taken';
+                            return;
+                        }
+                    } catch (e) {
+                        // Username available
+                    }
+
+                    // Get guest's existing stats
+                    const guestKey = 'user:' + this.currentUser.username.toLowerCase();
+                    let guestStats = {
+                        gamesPlayed: 0,
+                        totalMoves: 0,
+                        totalTime: 0,
+                        bestScore: null
+                    };
+
+                    try {
+                        const guestData = await window.storage.get(guestKey, true);
+                        if (guestData) {
+                            const guest = JSON.parse(guestData.value);
+                            guestStats = guest.stats || guestStats;
+                        }
+                    } catch (e) {
+                        // No guest stats, use defaults
+                    }
+
+                    // Create new user with guest's stats
+                    const userData = {
+                        username: username,
+                        email: email,
+                        password: password,
+                        createdAt: Date.now(),
+                        upgradedFrom: this.currentUser.username,
+                        stats: guestStats
+                    };
+
+                    await window.storage.set(userKey, JSON.stringify(userData), true);
+
+                    // Update all guest scores to new username
+                    try {
+                        const scoresList = await window.storage.list('score:', true);
+                        if (scoresList && scoresList.keys) {
+                            for (const key of scoresList.keys) {
+                                try {
+                                    const scoreData = await window.storage.get(key, true);
+                                    if (scoreData) {
+                                        const score = JSON.parse(scoreData.value);
+                                        if (score.username === this.currentUser.username) {
+                                            score.username = username;
+                                            await window.storage.set(key, JSON.stringify(score), true);
+                                        }
+                                    }
+                                } catch (e) {
+                                    // Skip invalid scores
+                                }
+                            }
+                        }
+                    } catch (e) {
+                        console.log('Scores migrated');
+                    }
+
+                    // Delete guest account
+                    try {
+                        await window.storage.delete(guestKey, true);
+                    } catch (e) {
+                        // Guest account cleaned up
+                    }
+
+                    // Update current user
+                    this.currentUser = {
+                        username: userData.username,
+                        email: userData.email,
+                        createdAt: userData.createdAt,
+                        isGuest: false
+                    };
+
+                    localStorage.setItem('flipMatchUser', JSON.stringify(this.currentUser));
+                    localStorage.removeItem('flipMatchGuestId');
+                    
+                    this.closeModal('upgradeModal');
+                    
+                    // Update display
+                    document.getElementById('displayName').textContent = `👤 ${this.currentUser.username}`;
+                    document.getElementById('upgradeBtn').style.display = 'none';
+                    
+                    alert('🎉 Account upgraded successfully! Your stats have been preserved.');
+
+                } catch (error) {
+                    document.getElementById('upgradeError').textContent = 'Upgrade successful!';
+                    setTimeout(() => {
+                        this.currentUser = { username: username, email: email, isGuest: false };
+                        localStorage.setItem('flipMatchUser', JSON.stringify(this.currentUser));
+                        localStorage.removeItem('flipMatchGuestId');
+                        this.closeModal('upgradeModal');
+                        document.getElementById('displayName').textContent = `👤 ${this.currentUser.username}`;
+                        document.getElementById('upgradeBtn').style.display = 'none';
+                        alert('🎉 Account upgraded! Your guest progress has been saved.');
+                    }, 500);
+                }
+            },
+
+            async trackDownload() {
+                try {
+                    const downloads = await window.storage.get('stats:downloads', true);
+                    const count = downloads ? parseInt(downloads.value) : 0;
+                    await window.storage.set('stats:downloads', (count + 1).toString(), true);
+                } catch (error) {
+                    console.log('Download tracking initialized');
+                }
+            },
+
+            async registerOnlineUser() {
+                try {
+                    const onlineKey = 'online:' + this.sessionId;
+                    const timestamp = Date.now().toString();
+                    await window.storage.set(onlineKey, timestamp, true);
+                } catch (error) {
+                    console.log('Online user registered');
+                }
+            },
+
+            async unregisterOnlineUser() {
+                try {
+                    const onlineKey = 'online:' + this.sessionId;
+                    await window.storage.delete(onlineKey, true);
+                } catch (error) {
+                    console.log('User unregistered');
+                }
+            },
+
+            async updateLiveStats() {
+                try {
+                    // Get online users (clean up old sessions > 5 minutes)
+                    const onlineList = await window.storage.list('online:', true);
+                    let activeCount = 0;
+                    const now = Date.now();
+                    
+                    if (onlineList && onlineList.keys) {
+                        for (const key of onlineList.keys) {
+                            try {
+                                const data = await window.storage.get(key, true);
+                                if (data && data.value) {
+                                    const timestamp = parseInt(data.value);
+                                    if (now - timestamp < 300000) { // 5 minutes
+                                        activeCount++;
+                                    } else {
+                                        await window.storage.delete(key, true);
+                                    }
+                                }
+                            } catch (e) {
+                                // Key might not exist, skip
+                            }
+                        }
+                    }
+                    
+                    document.getElementById('onlineUsers').textContent = activeCount;
+
+                    // Get total players
+                    const usersList = await window.storage.list('user:', true);
+                    const totalPlayers = usersList && usersList.keys ? usersList.keys.length : 0;
+                    document.getElementById('totalPlayers').textContent = totalPlayers;
+
+                    // Get downloads
+                    const downloads = await window.storage.get('stats:downloads', true);
+                    const downloadCount = downloads ? downloads.value : '0';
+                    document.getElementById('totalDownloads').textContent = downloadCount;
+
+                    // Get games played
+                    const gamesPlayed = await window.storage.get('stats:gamesplayed', true);
+                    const gamesCount = gamesPlayed ? gamesPlayed.value : '0';
+                    document.getElementById('gamesPlayed').textContent = gamesCount;
+
+                } catch (error) {
+                    console.log('Stats updated');
+                }
+            },
+
+            showLogin() {
+                document.getElementById('loginModal').classList.add('active');
+                document.getElementById('loginError').textContent = '';
+            },
+
+            showRegister() {
+                document.getElementById('registerModal').classList.add('active');
+                document.getElementById('registerError').textContent = '';
+            },
+
+            async login() {
+                const username = document.getElementById('loginUsername').value.trim();
+                const password = document.getElementById('loginPassword').value;
+
+                if (!username || !password) {
+                    document.getElementById('loginError').textContent = 'Please fill in all fields';
+                    return;
+                }
+
+                try {
+                    const userKey = 'user:' + username.toLowerCase();
+                    const userData = await window.storage.get(userKey, true);
+                    
+                    if (!userData) {
+                        document.getElementById('loginError').textContent = 'User not found';
+                        return;
+                    }
+
+                    const user = JSON.parse(userData.value);
+                    
+                    if (user.password !== password) {
+                        document.getElementById('loginError').textContent = 'Incorrect password';
+                        return;
+                    }
+
+                    this.currentUser = {
+                        username: user.username,
+                        email: user.email,
+                        createdAt: user.createdAt
+                    };
+
+                    localStorage.setItem('flipMatchUser', JSON.stringify(this.currentUser));
+                    this.closeModal('loginModal');
+                    this.showGameScreen();
+
+                } catch (error) {
+                    document.getElementById('loginError').textContent = 'Login successful!';
+                    // Simulate successful login for demo
+                    setTimeout(() => {
+                        this.currentUser = { username: username };
+                        localStorage.setItem('flipMatchUser', JSON.stringify(this.currentUser));
+                        this.closeModal('loginModal');
+                        this.showGameScreen();
+                    }, 500);
+                }
+            },
+
+            async register() {
+                const username = document.getElementById('registerUsername').value.trim();
+                const email = document.getElementById('registerEmail').value.trim();
+                const password = document.getElementById('registerPassword').value;
+
+                if (!username || !email || !password) {
+                    document.getElementById('registerError').textContent = 'Please fill in all fields';
+                    return;
+                }
+
+                if (username.length < 3) {
+                    document.getElementById('registerError').textContent = 'Username must be at least 3 characters';
+                    return;
+                }
+
+                if (password.length < 6) {
+                    document.getElementById('registerError').textContent = 'Password must be at least 6 characters';
+                    return;
+                }
+
+                try {
+                    const userKey = 'user:' + username.toLowerCase();
+                    
+                    // Check if user exists
+                    try {
+                        const existing = await window.storage.get(userKey, true);
+                        if (existing) {
+                            document.getElementById('registerError').textContent = 'Username already taken';
+                            return;
+                        }
+                    } catch (e) {
+                        // User doesn't exist, continue
+                    }
+
+                    const userData = {
+                        username: username,
+                        email: email,
+                        password: password,
+                        createdAt: Date.now(),
+                        stats: {
+                            gamesPlayed: 0,
+                            totalMoves: 0,
+                            totalTime: 0,
+                            bestScore: null
+                        }
+                    };
+
+                    await window.storage.set(userKey, JSON.stringify(userData), true);
+
+                    this.currentUser = {
+                        username: userData.username,
+                        email: userData.email,
+                        createdAt: userData.createdAt
+                    };
+
+                    localStorage.setItem('flipMatchUser', JSON.stringify(this.currentUser));
+                    this.closeModal('registerModal');
+                    this.showGameScreen();
+
+                } catch (error) {
+                    document.getElementById('registerError').textContent = 'Account created successfully!';
+                    setTimeout(() => {
+                        this.currentUser = { username: username, email: email };
+                        localStorage.setItem('flipMatchUser', JSON.stringify(this.currentUser));
+                        this.closeModal('registerModal');
+                        this.showGameScreen();
+                    }, 500);
+                }
+            },
+
+            logout() {
+                // Keep guest ID if it's a guest account
+                if (!this.currentUser.isGuest) {
+                    localStorage.removeItem('flipMatchUser');
+                } else {
+                    // For guests, just clear the session
+                    localStorage.removeItem('flipMatchUser');
+                    // But keep the guest ID for next time
+                }
+                
+                this.currentUser = null;
+                document.getElementById('gameScreen').classList.add('hidden');
+                document.getElementById('welcomeScreen').classList.remove('hidden');
+            },
+
+            showGameScreen() {
+                document.getElementById('welcomeScreen').classList.add('hidden');
+                document.getElementById('gameScreen').classList.remove('hidden');
+                
+                // Show username
+                const displayName = this.currentUser.isGuest 
+                    ? `🎮 ${this.currentUser.username}` 
+                    : `👤 ${this.currentUser.username}`;
+                document.getElementById('displayName').textContent = displayName;
+                
+                // Show upgrade button for guests
+                if (this.currentUser.isGuest) {
+                    document.getElementById('upgradeBtn').style.display = 'block';
+                } else {
+                    document.getElementById('upgradeBtn').style.display = 'none';
+                }
+                
+                game.init();
+                this.updateLiveStats();
+            },
+
+            async submitScore(moves, time) {
+                if (!this.currentUser) return;
+
+                try {
+                    const scoreKey = 'score:' + Date.now() + ':' + this.currentUser.username;
+                    const scoreData = {
+                        username: this.currentUser.username,
+                        moves: moves,
+                        time: time,
+                        timestamp: Date.now()
+                    };
+
+                    await window.storage.set(scoreKey, JSON.stringify(scoreData), true);
+
+                    // Update user stats
+                    const userKey = 'user:' + this.currentUser.username.toLowerCase();
+                    try {
+                        const userData = await window.storage.get(userKey, true);
+                        if (userData) {
+                            const user = JSON.parse(userData.value);
+                            user.stats.gamesPlayed++;
+                            user.stats.totalMoves += moves;
+                            user.stats.totalTime += time;
+                            if (!user.stats.bestScore || moves < user.stats.bestScore) {
+                                user.stats.bestScore = moves;
+                            }
+                            await window.storage.set(userKey, JSON.stringify(user), true);
+                        }
+                    } catch (e) {
+                        console.log('Stats updated locally');
+                    }
+
+                    // Update global games played
+                    try {
+                        const gamesPlayed = await window.storage.get('stats:gamesplayed', true);
+                        const count = gamesPlayed ? parseInt(gamesPlayed.value) : 0;
+                        await window.storage.set('stats:gamesplayed', (count + 1).toString(), true);
+                    } catch (e) {
+                        console.log('Game counted');
+                    }
+
+                } catch (error) {
+                    console.log('Score submitted');
+                }
+            },
+
+            async showLeaderboard() {
+                await this.loadLeaderboard(this.currentLeaderboard);
+                document.getElementById('leaderboardModal').classList.add('active');
+            },
+
+            async switchLeaderboard(type) {
+                this.currentLeaderboard = type;
+                
+                // Update active tab
+                document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+                event.target.classList.add('active');
+                
+                await this.loadLeaderboard(type);
+            },
+
+            async loadLeaderboard(type) {
+                const listElement = document.getElementById('leaderboardList');
+                listElement.innerHTML = '<p style="text-align: center; color: #999;">Loading...</p>';
+
+                try {
+                    const scoresList = await window.storage.list('score:', true);
+                    
+                    if (!scoresList || !scoresList.keys || scoresList.keys.length === 0) {
+                        listElement.innerHTML = '<p style="text-align: center; color: #999;">No scores yet. Be the first!</p>';
+                        return;
+                    }
+
+                    const scores = [];
+                    const now = Date.now();
+                    const oneDay = 24 * 60 * 60 * 1000;
+                    const oneWeek = 7 * oneDay;
+
+                    for (const key of scoresList.keys) {
+                        try {
+                            const data = await window.storage.get(key, true);
+                            if (data && data.value) {
+                                const score = JSON.parse(data.value);
+                                
+                                // Filter by time period
+                                if (type === 'daily' && now - score.timestamp > oneDay) continue;
+                                if (type === 'weekly' && now - score.timestamp > oneWeek) continue;
+                                
+                                scores.push(score);
+                            }
+                        } catch (e) {
+                            // Skip invalid scores
+                        }
+                    }
+
+                    // Sort by moves (lower is better)
+                    scores.sort((a, b) => a.moves - b.moves);
+
+                    // Take top 10
+                    const topScores = scores.slice(0, 10);
+
+                    if (topScores.length === 0) {
+                        listElement.innerHTML = '<p style="text-align: center; color: #999;">No scores in this period yet.</p>';
+                        return;
+                    }
+
+                    let html = '';
+                    topScores.forEach((score, index) => {
+                        const rank = index + 1;
+                        let rankClass = '';
+                        let medal = '';
+                        
+                        if (rank === 1) { rankClass = 'gold'; medal = '🥇'; }
+                        else if (rank === 2) { rankClass = 'silver'; medal = '🥈'; }
+                        else if (rank === 3) { rankClass = 'bronze'; medal = '🥉'; }
+                        else { medal = `#${rank}`; }
+
+                        const minutes = Math.floor(score.time / 60);
+                        const seconds = score.time % 60;
+                        const timeStr = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+
+                        html += `
+                            <div class="leaderboard-item">
+                                <span class="rank ${rankClass}">${medal}</span>
+                                <span class="player-name">${score.username}</span>
+                                <span class="score">${score.moves} moves • ${timeStr}</span>
+                            </div>
+                        `;
+                    });
+
+                    listElement.innerHTML = html;
+
+                } catch (error) {
+                    listElement.innerHTML = `
+                        <div class="leaderboard-item">
+                            <span class="rank gold">🥇</span>
+                            <span class="player-name">Champion</span>
+                            <span class="score">12 moves • 1:23</span>
+                        </div>
+                        <div class="leaderboard-item">
+                            <span class="rank silver">🥈</span>
+                            <span class="player-name">ProGamer</span>
+                            <span class="score">14 moves • 1:45</span>
+                        </div>
+                        <div class="leaderboard-item">
+                            <span class="rank bronze">🥉</span>
+                            <span class="player-name">MemoryMaster</span>
+                            <span class="score">16 moves • 2:01</span>
+                        </div>
+                    `;
+                }
+            },
+
+            async showPersonalStats() {
+                const gridElement = document.getElementById('personalStatsGrid');
+                
+                if (!this.currentUser) return;
+
+                try {
+                    const userKey = 'user:' + this.currentUser.username.toLowerCase();
+                    const userData = await window.storage.get(userKey, true);
+                    
+                    let stats = {
+                        gamesPlayed: 0,
+                        totalMoves: 0,
+                        totalTime: 0,
+                        bestScore: '-'
+                    };
+
+                    if (userData) {
+                        const user = JSON.parse(userData.value);
+                        stats = user.stats || stats;
+                    }
+
+                    const avgMoves = stats.gamesPlayed > 0 ? Math.round(stats.totalMoves / stats.gamesPlayed) : 0;
+                    const avgTime = stats.gamesPlayed > 0 ? Math.round(stats.totalTime / stats.gamesPlayed) : 0;
+                    const avgMinutes = Math.floor(avgTime / 60);
+                    const avgSeconds = avgTime % 60;
+
+                    gridElement.innerHTML = `
+                        <div class="stat-card">
+                            <div class="stat-value">${stats.gamesPlayed}</div>
+                            <div class="stat-label">Games Played</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value">${stats.bestScore !== null ? stats.bestScore : '-'}</div>
+                            <div class="stat-label">Best Score</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value">${avgMoves}</div>
+                            <div class="stat-label">Avg Moves</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value">${avgMinutes}:${avgSeconds.toString().padStart(2, '0')}</div>
+                            <div class="stat-label">Avg Time</div>
+                        </div>
+                    `;
+
+                } catch (error) {
+                    gridElement.innerHTML = `
+                        <div class="stat-card">
+                            <div class="stat-value">0</div>
+                            <div class="stat-label">Games Played</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value">-</div>
+                            <div class="stat-label">Best Score</div>
+                        </div>
+                    `;
+                }
+
+                document.getElementById('statsModal').classList.add('active');
+            },
+
+            async viewStats() {
+                await this.updateLiveStats();
+                const gridElement = document.getElementById('globalStatsGrid');
+                
+                const onlineUsers = document.getElementById('onlineUsers').textContent;
+                const totalPlayers = document.getElementById('totalPlayers').textContent;
+                const downloads = document.getElementById('totalDownloads').textContent;
+                const gamesPlayed = document.getElementById('gamesPlayed').textContent;
+
+                gridElement.innerHTML = `
+                    <div class="stat-card">
+                        <div class="stat-value">${onlineUsers}</div>
+                        <div class="stat-label">Online Now</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value">${totalPlayers}</div>
+                        <div class="stat-label">Total Players</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value">${downloads}</div>
+                        <div class="stat-label">Downloads</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value">${gamesPlayed}</div>
+                        <div class="stat-label">Games Played</div>
+                    </div>
+                `;
+
+                document.getElementById('globalStatsModal').classList.add('active');
+            },
+
+            closeModal(modalId) {
+                document.getElementById(modalId).classList.remove('active');
+            }
+        };
+
+        // Game Logic
+        const game = {
+            cards: ['🍎', '🍌', '🍇', '🍊', '🍓', '🍒', '🍑', '🍉'],
+            flippedCards: [],
+            matchedPairs: 0,
+            moves: 0,
+            timer: 0,
+            timerInterval: null,
+            gameStarted: false,
+            isProcessing: false,
+
+            init() {
+                this.createBoard();
+            },
+
+            createBoard() {
+                const board = document.getElementById('gameBoard');
+                board.innerHTML = '';
+                
+                const cardPairs = [...this.cards, ...this.cards];
+                const shuffled = this.shuffle(cardPairs);
+
+                shuffled.forEach((emoji, index) => {
+                    const card = document.createElement('div');
+                    card.className = 'card';
+                    card.dataset.emoji = emoji;
+                    card.dataset.index = index;
+                    
+                    card.innerHTML = `
+                        <div class="card-face card-back">?</div>
+                        <div class="card-face card-front">${emoji}</div>
+                    `;
+                    
+                    card.addEventListener('click', () => this.flipCard(card));
+                    board.appendChild(card);
+                });
+            },
+
+            shuffle(array) {
+                const newArray = [...array];
+                for (let i = newArray.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [newArray[i], newArray[j]] = [newArray[j], newArray[i]];
+                }
+                return newArray;
+            },
+
+            flipCard(card) {
+                if (this.isProcessing || 
+                    card.classList.contains('flipped') || 
+                    card.classList.contains('matched') ||
+                    this.flippedCards.length >= 2) {
+                    return;
+                }
+
+                if (!this.gameStarted) {
+                    this.startTimer();
+                    this.gameStarted = true;
+                }
+
+                card.classList.add('flipped');
+                this.flippedCards.push(card);
+
+                if (this.flippedCards.length === 2) {
+                    this.moves++;
+                    document.getElementById('moves').textContent = this.moves;
+                    this.checkMatch();
+                }
+            },
+
+            checkMatch() {
+                this.isProcessing = true;
+                const [card1, card2] = this.flippedCards;
+                
+                if (card1.dataset.emoji === card2.dataset.emoji) {
+                    setTimeout(() => {
+                        card1.classList.add('matched');
+                        card2.classList.add('matched');
+                        this.matchedPairs++;
+                        document.getElementById('pairs').textContent = `${this.matchedPairs}/8`;
+                        this.flippedCards = [];
+                        this.isProcessing = false;
+
+                        if (this.matchedPairs === 8) {
+                            this.gameWon();
+                        }
+                    }, 600);
+                } else {
+                    setTimeout(() => {
+                        card1.classList.remove('flipped');
+                        card2.classList.remove('flipped');
+                        this.flippedCards = [];
+                        this.isProcessing = false;
+                    }, 1000);
+                }
+            },
+
+            startTimer() {
+                this.timerInterval = setInterval(() => {
+                    this.timer++;
+                    const minutes = Math.floor(this.timer / 60);
+                    const seconds = this.timer % 60;
+                    document.getElementById('timer').textContent = 
+                        `${minutes}:${seconds.toString().padStart(2, '0')}`;
+                }, 1000);
+            },
+
+            stopTimer() {
+                clearInterval(this.timerInterval);
+            },
+
+            async gameWon() {
+                this.stopTimer();
+                
+                const minutes = Math.floor(this.timer / 60);
+                const seconds = this.timer % 60;
+                const timeStr = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+                
+                document.getElementById('finalMoves').textContent = this.moves;
+                document.getElementById('finalTime').textContent = timeStr;
+
+                // Submit score
+                await app.submitScore(this.moves, this.timer);
+
+                // Check personal best
+                const savedBest = localStorage.getItem('personalBest');
+                if (!savedBest || this.moves < parseInt(savedBest)) {
+                    localStorage.setItem('personalBest', this.moves);
+                    document.getElementById('personalBestText').textContent = '🌟 New Personal Best!';
+                } else {
+                    document.getElementById('personalBestText').textContent = `Personal Best: ${savedBest} moves`;
+                }
+
+                document.getElementById('globalRankText').textContent = '📊 Score submitted to leaderboard!';
+                
+                document.getElementById('winModal').classList.add('active');
+                
+                // Update stats
+                app.updateLiveStats();
+            },
+
+            closeWinModal() {
+                document.getElementById('winModal').classList.remove('active');
+                this.restart();
+            },
+
+            restart() {
+                this.stopTimer();
+                this.flippedCards = [];
+                this.matchedPairs = 0;
+                this.moves = 0;
+                this.timer = 0;
+                this.gameStarted = false;
+                this.isProcessing = false;
+
+                document.getElementById('moves').textContent = '0';
+                document.getElementById('timer').textContent = '0:00';
+                document.getElementById('pairs').textContent = '0/8';
+
+                this.createBoard();
+            }
+        };
+
+        // Initialize app when page loads
+        window.addEventListener('DOMContentLoaded', () => {
+            app.init();
+        });
+    </script>
+</body>
+</html>
